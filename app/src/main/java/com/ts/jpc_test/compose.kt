@@ -52,7 +52,7 @@ fun StickyHeaderList() {
                         )
                         // 右端にアイコン（Spacer で中央に寄せる）
                         Spacer(modifier = Modifier.weight(1f))
-                        IconButton(onClick = { /* 検索の処理 */ }) { //検索ボタンを追加(🚨未実装)
+                        IconButton(onClick = { /* 検索の処理 */ }) { // TODO: ボタンの処理は未実装
                             Icon(
                                 imageVector = Icons.Filled.Search,
                                 contentDescription = "検索"
