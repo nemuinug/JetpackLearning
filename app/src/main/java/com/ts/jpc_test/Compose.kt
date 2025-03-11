@@ -52,9 +52,7 @@ fun MainComponent() {
                     onDismissRequest = { selectedItem = null },
                     sheetState = sheetState
                 ) {
-                    DetailComponent(selectedItem.orEmpty()) {
-                        selectedItem = null
-                    }
+                    DetailComponent(selectedItem.orEmpty())
                 }
             }
         }
@@ -159,7 +157,7 @@ fun ScrollList(
 
 // 詳細画面 (ボトムシート)
 @Composable
-fun DetailComponent(selectedItem: String, onClickCloseButton: () -> Unit) {
+fun DetailComponent(selectedItem: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -173,10 +171,6 @@ fun DetailComponent(selectedItem: String, onClickCloseButton: () -> Unit) {
             style = MaterialTheme.typography.titleLarge
         )
         Spacer(modifier = Modifier.height(16.dp)) // 余白
-
-        // 閉じるボタン
-        Button(onClick = onClickCloseButton) {
-            Text("閉じる")
-        }
     }
 }
+
