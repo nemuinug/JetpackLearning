@@ -14,15 +14,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.ts.jpc_test.ui.theme.JPC_testTheme
 
+// MainActivity (アプリのエントリーポイント)
 class MainActivity : ComponentActivity() {
+    // onCreate() メソッド:アクティビティが作成されたときに実行
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            JPC_testTheme {
+        super.onCreate(savedInstanceState) // 親クラスのonCreateを呼び出し
+
+        enableEdgeToEdge() // フルスクリーン(エッジからエッジまで描画)を有効化
+
+        setContent { // Jetpack ComposeのUI
+            JPC_testTheme { // アプリのテーマを適用
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    // ScaffoldはMaterial Design のレイアウト構造
+
                     Column(modifier = Modifier.padding(innerPadding)) {
-                        StickyHeaderList()
+                        // メインのUIを表示
+                        MainComponent()
                     }
                 }
             }
