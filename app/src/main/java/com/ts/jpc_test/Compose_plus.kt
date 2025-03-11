@@ -42,8 +42,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 //縁取り文字を作成するfun
-val smallButtonSize = 48.dp // 小さいボタンのサイズ
-val bigButtonSize = 80.dp // 大きいボタンのサイズ
+val smallButtonSize = 65.dp // 小さいボタンのサイズ
+val bigButtonSize = 100.dp // 大きいボタンのサイズ
 val distance = bigButtonSize / 2 + smallButtonSize / 2 + 16.dp // 間隔を設定
 
 @Composable
