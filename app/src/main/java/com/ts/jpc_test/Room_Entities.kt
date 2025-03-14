@@ -10,7 +10,7 @@ data class Todo(
     @ColumnInfo(name = "section") val section: String,
     @ColumnInfo(name = "title") val title: String,
     @ColumnInfo(name = "text") val text: String,
-    @ColumnInfo(name = "onchecked") val onChecked: Boolean,
+    @ColumnInfo(name = "onChecked") val onChecked: Int,
     @ColumnInfo(name = "tag") val tag: String
 )
 

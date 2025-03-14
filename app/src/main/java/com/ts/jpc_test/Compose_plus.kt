@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,11 +41,17 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 //縁取り文字を作成するfun
 val smallButtonSize = 65.dp // 小さいボタンのサイズ
 val bigButtonSize = 100.dp // 大きいボタンのサイズ
+
 val distance = bigButtonSize / 2 + smallButtonSize / 2 + 16.dp // 間隔を設定
+
+val trueInt = 1
+val falseInt = 0
+
 
 @Composable
 fun OutlinedText(
@@ -78,7 +85,8 @@ fun OutlinedText(
 
 //座標が固定されているボタンアイコン
 @Composable
-fun FloatingButtons() {
+fun FloatingButtons(todoDao: TodoDao) {
+    val scope = rememberCoroutineScope()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -130,14 +138,28 @@ fun FloatingButtons() {
 
         // 中央の大きなボタン（プラスマーク）
         FloatingActionButton(
-            onClick = { /* 大ボタンの処理 */ },
-            modifier = Modifier
-                .size(bigButtonSize)
-                .align(Alignment.BottomEnd), // 右下に固定
+            onClick = {
+                scope.launch {
+                    try {
+                        todoDao.insert(
+                            Todo(
+                                section = "新規",
+                                title = "新しいタスク",
+                                text = "詳細情報",
+                                onChecked = falseInt,
+                                tag = "general"
+                            )
+                        )
+                    } catch (e: Exception) {
+                        println("データの挿入に失敗しました: ${e.message}")
+                    }
+                }
+            },
+            modifier = Modifier.padding(16.dp),
             shape = RoundedCornerShape(50),
-            containerColor = Color(0xFF00BFFF) // 明るい水色
+            containerColor = Color(0xFFFFFFFF)
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "追加", tint = Color.White)
+            Icon(Icons.Filled.Add, contentDescription = "追加", tint = Color.Black)
         }
     }
 }
@@ -187,7 +209,7 @@ fun HeadtitleList(headtitles: List<Headtitle>) {
             FloatingActionButton(
                 onClick = { /* 追加ボタンの処理 */ },
                 modifier = Modifier
-                    .offset(y = 5.dp)
+                    .offset(y = -2.dp)
                     .size(smallButtonSize * 0.7f),
                 shape = RoundedCornerShape(50),
                 containerColor = Color(0xFFFFFFFF) // 淡いピンク
