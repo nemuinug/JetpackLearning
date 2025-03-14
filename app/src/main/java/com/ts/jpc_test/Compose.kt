@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 // データクラス : ヘッダーのセクション情報を保持
@@ -27,34 +29,49 @@ data class Headtitle(val title: String)
 // Composable関数 : メイン画面のUIを構築
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun MainComponent() {
+fun MainComponent(todoDao: TodoDao) {
     val listState = rememberLazyListState() // リストのスクロール状態を管理
     val sheetState = rememberModalBottomSheetState() // ボトムシートの状態を管理
-    val scope = rememberCoroutineScope() // （並行処理）を管理するためのスコープ
-    var selectedItem by remember { mutableStateOf<String?>(null) } // 選択されたアイテムを記憶
+    val scope = rememberCoroutineScope() // 並行処理を管理するためのスコープ
+    var selectedItem by remember { mutableStateOf<Todo?>(null) } // 選択されたアイテムを記憶
+    val todoList by remember { todoDao.getAll() }.collectAsState(initial = emptyList())
+
+    // ボタン押下時の処理を定義
+    val onAddClick: () -> Unit = {
+        scope.launch(Dispatchers.IO) { // I/O スレッドで処理
+            todoDao.insert(Todo(section = "1", title = "新しいTodo", text = "詳細", isChecked = true, tag = "タグ", quantity = 0))
+        }
+    }
+
+    val onDeleteClick: (Todo) -> Unit = { todo ->
+        scope.launch(Dispatchers.IO) { // I/O スレッドで処理
+            todoDao.delete(todo)
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 画面全体をカバーするコンテナ
         Box(modifier = Modifier.weight(1f)) {
             ScrollList(
                 listState = listState,
-                onItemClicked = { item ->
-                    selectedItem = item
+                todoList = todoList,
+                onItemClicked = { todo ->
+                    selectedItem = todo
                     scope.launch { sheetState.show() }
                 }
             )
-            //スクロールに影響しないボタン
-            FloatingButtons()
 
-            //詳細画面ボトムシート
+            // ボタンの処理を渡す
+            FloatingButtons(
+                onAddClick = onAddClick,
+                onDeleteClick = { selectedItem?.let(onDeleteClick) }
+            )
+
             if (selectedItem != null) {
                 ModalBottomSheet(
                     onDismissRequest = { selectedItem = null },
                     sheetState = sheetState
                 ) {
-                    DetailComponent(selectedItem.orEmpty()) {
-                        selectedItem = null
-                    }
+                    DetailComponent(selectedItem!!)
                 }
             }
         }
@@ -106,24 +123,16 @@ fun AppTopBar() {
 @Composable
 fun ScrollList(
     listState: LazyListState,
-    onItemClicked: (String) -> Unit
+    todoList: List<Todo>,
+    onItemClicked: (Todo) -> Unit
 ) {
-    // ヘッダー用のダミーデータ
-    val headtitles = listOf(
-        Headtitle("セクション 1"),
-        Headtitle("セクション 2"),
-        Headtitle("セクション 3"),
-        Headtitle("セクション 4")
-    )
-
-    // スクロール可能なリスト (LazyColumn)
     LazyColumn(state = listState) {
-        // トップバー (アプリのタイトルとメニュー)
+        // トップバー
         item {
             AppTopBar()
         }
 
-        // スクロールしても固定されるヘッダー
+        // 固定ヘッダー
         stickyHeader {
             Box(
                 modifier = Modifier
@@ -132,51 +141,43 @@ fun ScrollList(
                     .background(Color(0xFF9DC183)), // ヘッダーの背景色
                 contentAlignment = Alignment.Center
             ) {
-                Column(modifier = Modifier.padding(1.dp)) {
-                    HeadtitleList(headtitles) // ヘッダーリストの描画
-                }
+                Text(
+                    text = "Todoリスト",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White
+                )
             }
         }
 
-        //リストの内容
-        items(20) { index ->
+        // Todo リスト
+        items(todoList) { todo ->
             Text(
-                text = "アイテム $index",
+                text = "${todo.title}: ${todo.quantity}",
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
                     .background(Color.White, RoundedCornerShape(8.dp))
                     .padding(16.dp)
-                    .clickable {
-                        onItemClicked("アイテム $index")
-                    },
+                    .clickable { onItemClicked(todo) }, // `Todo` を渡す
                 color = Color.Black
             )
         }
-
     }
 }
+
 
 // 詳細画面 (ボトムシート)
 @Composable
-fun DetailComponent(selectedItem: String, onClickCloseButton: () -> Unit) {
+fun DetailComponent(todo: Todo) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(600.dp) // 高さを増やして、中央まで表示
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 選択したアイテムの詳細
-        Text(
-            text = selectedItem,
-            style = MaterialTheme.typography.titleLarge
-        )
-        Spacer(modifier = Modifier.height(16.dp)) // 余白
-
-        // 閉じるボタン
-        Button(onClick = onClickCloseButton) {
-            Text("閉じる")
-        }
+        Text(text = "タイトル: ${todo.title}", style = MaterialTheme.typography.titleLarge)
+        Text(text = "内容: ${todo.text}", style = MaterialTheme.typography.bodyMedium)
+        Text(text = "タグ: ${todo.tag}", style = MaterialTheme.typography.bodySmall)
     }
 }
+
