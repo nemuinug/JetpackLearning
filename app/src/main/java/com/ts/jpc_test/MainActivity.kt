@@ -17,14 +17,14 @@ import com.ts.jpc_test.ui.theme.JPC_testTheme
 // MainActivity (アプリのエントリーポイント)
 class MainActivity : ComponentActivity() {
     private lateinit var database: AppDatabase
-    private lateinit var todoDao: TodoDao
+    private lateinit var todoDao: Room_Dao
     // onCreate() メソッド:アクティビティが作成されたときに実行
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState) // 親クラスのonCreateを呼び出し
 
         // Room データベースのインスタンスを取得
         database = AppDatabase.getDatabase(this)
-        todoDao = database.todoDao()
+        todoDao = database.Room_Database()
         enableEdgeToEdge() // フルスクリーン(エッジからエッジまで描画)を有効化
 
         setContent { // Jetpack ComposeのUI

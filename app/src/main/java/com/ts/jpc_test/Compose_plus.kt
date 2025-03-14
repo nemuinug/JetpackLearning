@@ -78,7 +78,10 @@ fun OutlinedText(
 
 //座標が固定されているボタンアイコン
 @Composable
-fun FloatingButtons(todoDao: TodoDao) {
+fun FloatingButtons(
+    onAddClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()

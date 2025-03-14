@@ -5,12 +5,12 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "todo_table")
-data class Todo(
+data class Room_Entities(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,// 自動でIDを増やす
     @ColumnInfo(name = "section") val section: String,
     @ColumnInfo(name = "title") val title: String,
     @ColumnInfo(name = "text") val text: String,
-    @ColumnInfo(name = "onChecked") val onChecked: Boolean,
+    @ColumnInfo(name = "onChecked") val isChecked: Boolean,
     @ColumnInfo(name = "tag") val tag: String,
     @ColumnInfo(name = "quantity") val quantity: Int
 )

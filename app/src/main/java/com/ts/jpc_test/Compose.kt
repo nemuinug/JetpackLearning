@@ -28,28 +28,43 @@ data class Headtitle(val title: String)
 // Composable関数 : メイン画面のUIを構築
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun MainComponent(todoDao: TodoDao) {
+fun MainComponent(todoDao: Room_Dao) {
     val listState = rememberLazyListState() // リストのスクロール状態を管理
     val sheetState = rememberModalBottomSheetState() // ボトムシートの状態を管理
-    val scope = rememberCoroutineScope() // （並行処理）を管理するためのスコープ
-    var selectedItem by remember { mutableStateOf<Todo?>(null) } // 選択されたアイテムを記憶
-    val todoList by todoDao.getAllTodos().collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope() // 並行処理を管理するためのスコープ
+    var selectedItem by remember { mutableStateOf<Room_Entities?>(null) } // 選択されたアイテムを記憶
+    val todoList by todoDao.getAll().collectAsState(initial = emptyList())
+
+    // ボタン押下時の処理を定義
+    val onAddClick: () -> Unit = {
+        scope.launch {
+            todoDao.insert(Room_Entities(section = "1", title = "新しいTodo", text = "詳細", isChecked = true, tag = "タグ", quantity = 0))
+        }
+    }
+
+    val onDeleteClick: (Room_Entities) -> Unit = { todo ->
+        scope.launch {
+            todoDao.delete(todo)
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // 画面全体をカバーするコンテナ
         Box(modifier = Modifier.weight(1f)) {
             ScrollList(
                 listState = listState,
-                todoList = todoList, // Room のデータを渡す
+                todoList = todoList,
                 onItemClicked = { todo ->
                     selectedItem = todo
                     scope.launch { sheetState.show() }
                 }
             )
-            //スクロールに影響しないボタン
-            FloatingButtons(todoDao)
 
-            //詳細画面ボトムシート
+            // ボタンの処理を渡す
+            FloatingButtons(
+                onAddClick = onAddClick,
+                onDeleteClick = { selectedItem?.let(onDeleteClick) }
+            )
+
             if (selectedItem != null) {
                 ModalBottomSheet(
                     onDismissRequest = { selectedItem = null },
@@ -107,8 +122,8 @@ fun AppTopBar() {
 @Composable
 fun ScrollList(
     listState: LazyListState,
-    todoList: List<Todo>,
-    onItemClicked: (Todo) -> Unit
+    todoList: List<Room_Entities>,
+    onItemClicked: (Room_Entities) -> Unit
 ) {
     LazyColumn(state = listState) {
         // トップバー
@@ -152,7 +167,7 @@ fun ScrollList(
 
 // 詳細画面 (ボトムシート)
 @Composable
-fun DetailComponent(todo: Todo) {
+fun DetailComponent(todo: Room_Entities) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
