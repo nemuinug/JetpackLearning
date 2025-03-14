@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 // データクラス : ヘッダーのセクション情報を保持
@@ -28,22 +29,22 @@ data class Headtitle(val title: String)
 // Composable関数 : メイン画面のUIを構築
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun MainComponent(todoDao: Room_Dao) {
+fun MainComponent(todoDao: TodoDao) {
     val listState = rememberLazyListState() // リストのスクロール状態を管理
     val sheetState = rememberModalBottomSheetState() // ボトムシートの状態を管理
     val scope = rememberCoroutineScope() // 並行処理を管理するためのスコープ
-    var selectedItem by remember { mutableStateOf<Room_Entities?>(null) } // 選択されたアイテムを記憶
-    val todoList by todoDao.getAll().collectAsState(initial = emptyList())
+    var selectedItem by remember { mutableStateOf<Todo?>(null) } // 選択されたアイテムを記憶
+    val todoList by remember { todoDao.getAll() }.collectAsState(initial = emptyList())
 
     // ボタン押下時の処理を定義
     val onAddClick: () -> Unit = {
-        scope.launch {
-            todoDao.insert(Room_Entities(section = "1", title = "新しいTodo", text = "詳細", isChecked = true, tag = "タグ", quantity = 0))
+        scope.launch(Dispatchers.IO) { // I/O スレッドで処理
+            todoDao.insert(Todo(section = "1", title = "新しいTodo", text = "詳細", isChecked = true, tag = "タグ", quantity = 0))
         }
     }
 
-    val onDeleteClick: (Room_Entities) -> Unit = { todo ->
-        scope.launch {
+    val onDeleteClick: (Todo) -> Unit = { todo ->
+        scope.launch(Dispatchers.IO) { // I/O スレッドで処理
             todoDao.delete(todo)
         }
     }
@@ -122,8 +123,8 @@ fun AppTopBar() {
 @Composable
 fun ScrollList(
     listState: LazyListState,
-    todoList: List<Room_Entities>,
-    onItemClicked: (Room_Entities) -> Unit
+    todoList: List<Todo>,
+    onItemClicked: (Todo) -> Unit
 ) {
     LazyColumn(state = listState) {
         // トップバー
@@ -167,7 +168,7 @@ fun ScrollList(
 
 // 詳細画面 (ボトムシート)
 @Composable
-fun DetailComponent(todo: Room_Entities) {
+fun DetailComponent(todo: Todo) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
