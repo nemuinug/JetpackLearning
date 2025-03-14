@@ -1,11 +1,12 @@
-import android.content.Context
+package com.ts.jpc_test
+
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.ts.jpc_test.Todo
-import com.ts.jpc_test.TodoDao
+import android.content.Context
 
-@Database(entities = [Todo::class], version = 1, exportSchema = false)
+
+@Database(entities = [Todo::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao
 
@@ -21,7 +22,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "todo_database"
                 )
                     .fallbackToDestructiveMigration()
-                    .allowMainThreadQueries() // メインスレッドで実行（デバッグ用）
+                    .allowMainThreadQueries()
                     .build()
                 INSTANCE = instance
                 instance

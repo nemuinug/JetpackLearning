@@ -136,11 +136,12 @@ fun ScrollList(
         // Todo リスト
         items(todoList) { todo ->
             Text(
-                text = "${todo.title}: ${todo.text}",
+                text = "${todo.title}: ${todo.quantity}",
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
                     .background(Color.White, RoundedCornerShape(8.dp))
+                    .padding(16.dp)
                     .clickable { onItemClicked(todo) }, // `Todo` を渡す
                 color = Color.Black
             )
