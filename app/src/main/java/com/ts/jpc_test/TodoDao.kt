@@ -20,15 +20,24 @@ interface TodoDao {
     @Delete
     suspend fun delete(todo: Todo)// 特定の ID のタスクを削除
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTodos(todos: List<Todo>) //複数のアイテムをまとめて挿入
+
     @Query("SELECT * FROM todo_table ORDER BY id ASC")
     fun getAll(): Flow<List<Todo>> // すべてのタスクを取得
 
     @Query("SELECT * FROM todo_table WHERE tag = :tag")
     fun getTodosByTag(tag: String): Flow<List<Todo>> //指定されたタグを持つタスクを取得する。
 
+    @Query("SELECT * FROM todo_section_table ORDER BY todoSectionNum ASC")
+    suspend fun getAllSectionsNow(): List<TodoSection> // Flow ではなく即時取得
+
     // **TodoSection 用のメソッドを追加**
+    @Query("SELECT COUNT(*) FROM todo_section_table")
+    suspend fun getSectionCount(): Int // セクション数を取得
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSection(todoSection: TodoSection) // `TodoSection` を追加
+    suspend fun insertSection(todoSection: TodoSection): Long
 
     @Query("SELECT * FROM todo_section_table ORDER BY todoSectionNum ASC")
     fun getAllSections(): Flow<List<TodoSection>> // すべてのセクションを取得

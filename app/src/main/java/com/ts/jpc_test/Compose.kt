@@ -18,7 +18,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,6 +43,21 @@ fun MainComponent(todoDao: TodoDao) {
     var carentNum by remember { mutableStateOf(0) } // 選択されたセクション番号
     var showDialog by remember { mutableStateOf(false) } // ダイアログ表示状態
     val scrollListState = rememberLazyListState()
+
+    //最初のセクションで初期値を挿入
+    LaunchedEffect(Unit) {
+        scope.launch(Dispatchers.IO) {
+            val sectionId = initialAccess(todoDao) ?: return@launch
+            carentNum = sectionId // 例のセクション番号を設定
+        }
+    }
+
+
+    LaunchedEffect(sectionList) {
+        if (sectionList.isNotEmpty() && carentNum == 0) {
+            carentNum = sectionList.first().todoSectionNum
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
@@ -80,7 +98,7 @@ fun MainComponent(todoDao: TodoDao) {
                 onListAdd = { showDialog = true },
                 onSearchClick = {
                     // 検索処理（例: 検索ダイアログを開く）
-                    println("検索ボタンがクリックされました")
+                    println("検索ボタンがクリックされました") //todo 検索処理
                 },
             )
         }
@@ -102,7 +120,12 @@ fun MainComponent(todoDao: TodoDao) {
         onDismiss = { showDialog = false },
         onConfirm = { inputText ->
             scope.launch(Dispatchers.IO) {
-                todoDao.insertSection(TodoSection(todoSectionTitle = inputText))
+                todoDao.insertSection(
+                    TodoSection(
+                        todoSectionTitle = inputText,
+                        todoOnDeleted = false
+                    )
+                )
             }
         }
     )
@@ -155,41 +178,49 @@ fun ScrollList(
     todoList: List<Todo>,
     onItemClicked: (Todo) -> Unit,
     onSectionSelected: (Int) -> Unit,
-    sectionList: List<TodoSection>, // セクションのリストを受け取る
+    sectionList: List<TodoSection>,
     carentNum: Int
 ) {
+    val filteredTodoList by remember(todoList, carentNum) {
+        mutableStateOf(todoList.filter { it.sectionNum == carentNum })
+    }
+
     LazyColumn(state = listState) {
         item {
             AppTopBar()
         }
 
-        // **セクションをDBから取得し表示**
         stickyHeader {
             HeadtitleList(
-                headtitles = sectionList.map { Headtitle(it.todoSectionTitle) },
+                headtitles = sectionList,
                 carentNum = carentNum,
                 onItemSelected = { selectedNum ->
                     onSectionSelected(selectedNum) // `carentNum` を更新
                 },
-                listState = listState // `listState` を渡す
+                listState = listState
             )
         }
 
-        items(todoList) { todo ->
+        items(filteredTodoList) { todo ->
             Text(
-                text = "${todo.title}: ${todo.quantity}",
+                text = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = Color.Blue)) { // タイトルを青色に変更
+                        append(todo.title)
+                    }
+                    append(": ${todo.text}") // テキスト部分はそのまま
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
                     .background(Color.White, RoundedCornerShape(8.dp))
                     .padding(16.dp)
                     .clickable { onItemClicked(todo) },
-                color = Color.Black
+                color = Color.Black // デフォルトの文字色
             )
         }
+
     }
 }
-
 
 // 詳細画面 (ボトムシート)
 @Composable

@@ -47,6 +47,10 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 //縁取り文字を作成するfun
 val smallButtonSize = 65.dp // 小さいボタンのサイズ
@@ -123,7 +127,11 @@ fun FloatingButtons(
             shape = RoundedCornerShape(50),
             containerColor = Color(0xFF9DC183)
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "横スクロールアイテム追加", tint = Color.White)
+            Icon(
+                Icons.Filled.Add,
+                contentDescription = "横スクロールアイテム追加",
+                tint = Color.White
+            )
         }
 
         // 小さいボタン（真左）
@@ -158,14 +166,13 @@ fun FloatingButtons(
 }
 
 
-
 // 横スクロール可能な見出しリスト
 @Composable
 fun HeadtitleList(
-    headtitles: List<Headtitle>,
-    carentNum: Int, // 現在選択されているセクション
+    headtitles: List<TodoSection>,
+    carentNum: Int,
     onItemSelected: (Int) -> Unit,
-    listState: LazyListState // スクロール制御のための state
+    listState: LazyListState
 ) {
     LazyRow(
         modifier = Modifier
@@ -175,13 +182,13 @@ fun HeadtitleList(
         horizontalArrangement = Arrangement.spacedBy(16.dp)
 
     ) {
-        itemsIndexed(headtitles) { index, headtitle ->
+        itemsIndexed(headtitles) { _, headtitle -> // `index` ではなく `headtitle`
             Box(
                 modifier = Modifier
-                    .width(120.dp) // 固定幅を設定
+                    .width(120.dp)
                     .height(50.dp)
                     .clickable {
-                        onItemSelected(index) // コールバックで選択情報を渡す
+                        onItemSelected(headtitle.todoSectionNum) // `todoSectionNum` を渡す
                     }
                     .background(
                         Color.Transparent,
@@ -190,33 +197,23 @@ fun HeadtitleList(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = headtitle.title,
+                    text = headtitle.todoSectionTitle,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis, // 長すぎる場合は "..." に省略
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .padding(horizontal = 5.dp, vertical = 8.dp)
                         .wrapContentSize(align = Alignment.Center),
                     style = TextStyle(
                         fontSize = MaterialTheme.typography.titleLarge.fontSize.times(0.7f),
-                        color = if (carentNum == index) Color.Black else Color.White,
+                        color = if (carentNum == headtitle.todoSectionNum) Color.Black else Color.White,
                         textAlign = TextAlign.Center
                     )
                 )
-
-                // 最後のアイテムの後に Divider を描画しない
-                if (index < headtitles.lastIndex) {
-                    HorizontalDivider(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(8.dp),
-                        thickness = 1.dp,
-                        color = Color.Gray
-                    )
-                }
             }
         }
     }
 }
+
 
 @Composable
 fun AddSectionDialog(
@@ -261,4 +258,78 @@ fun AddSectionDialog(
         )
     }
 }
+
+suspend fun initialAccess(todoDao: TodoDao): Int? {
+    return withContext(Dispatchers.IO) {
+        if (todoDao.getSectionCount() == 0) {
+            val exampleSection = TodoSection(
+                todoSectionTitle = "例",
+                todoOnDeleted = false
+            )
+            val exampleSectionId: Long = todoDao.insertSection(exampleSection)
+
+            // 直後にデータベースから ID を確認
+            val updatedSections = todoDao.getAllSectionsNow()
+            val exampleSectionNum =
+                updatedSections.find { it.todoSectionTitle == "例" }?.todoSectionNum
+                    ?: return@withContext null
+
+            todoDao.insertTodos(
+                listOf(
+                    Todo(
+                        sectionNum = exampleSectionNum,
+                        title = "グループを追加",
+                        text = "緑色の＋ボタン",
+                        onChecked = false,
+                        tag = "デフォルト",
+                        quantity = 1,
+                        onDeleted = false
+                    ),
+                    Todo(
+                        sectionNum = exampleSectionNum,
+                        title = "グループを削除",
+                        text = "🗑ボタン",
+                        onChecked = false,
+                        tag = "デフォルト",
+                        quantity = 1,
+                        onDeleted = false
+                    ),
+                    Todo(
+                        sectionNum = exampleSectionNum,
+                        title = "アイテムを追加",
+                        text = "青色の＋ボタン",
+                        onChecked = false,
+                        tag = "デフォルト",
+                        quantity = 1,
+                        onDeleted = false
+                    ),
+                    Todo(
+                        sectionNum = exampleSectionNum,
+                        title = "アイテムを削除",
+                        text = "アイテムをスワイプ",
+                        onChecked = false,
+                        tag = "デフォルト",
+                        quantity = 1,
+                        onDeleted = false
+                    ),
+                    Todo(
+                        sectionNum = exampleSectionNum,
+                        title = "アイテムを検索",
+                        text = "🔍ボタン",
+                        onChecked = false,
+                        tag = "デフォルト",
+                        quantity = 1,
+                        onDeleted = false
+                    ),
+                )
+            )
+
+            return@withContext exampleSectionNum
+        } else {
+            return@withContext null
+        }
+    }
+}
+
+
 

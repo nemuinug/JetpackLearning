@@ -20,6 +20,7 @@ data class Todo(
 data class TodoSection(
     @PrimaryKey(autoGenerate = true) val todoSectionNum: Int = 0,// 自動でIDを増やす
     @ColumnInfo(name = "todoSectionTitle") val todoSectionTitle: String,// 横リストアイテムタイトル
+    @ColumnInfo(name = "todoOnDeleted") val todoOnDeleted: Boolean
 )
 
 
