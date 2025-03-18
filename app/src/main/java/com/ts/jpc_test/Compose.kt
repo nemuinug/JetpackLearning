@@ -30,54 +30,83 @@ data class Headtitle(val title: String)
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MainComponent(todoDao: TodoDao) {
-    val listState = rememberLazyListState() // リストのスクロール状態を管理
-    val sheetState = rememberModalBottomSheetState() // ボトムシートの状態を管理
-    val scope = rememberCoroutineScope() // 並行処理を管理するためのスコープ
-    var selectedItem by remember { mutableStateOf<Todo?>(null) } // 選択されたアイテムを記憶
-    val todoList by remember { todoDao.getAll() }.collectAsState(initial = emptyList())
+    val listState = rememberLazyListState()
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+    var selectedItem by remember { mutableStateOf<Todo?>(null) }
+    val todoList by todoDao.getAll().collectAsState(initial = emptyList())
+    val sectionList by todoDao.getAllSections().collectAsState(initial = emptyList()) // セクションリスト取得
 
-    // ボタン押下時の処理を定義
-    val onAddClick: () -> Unit = {
-        scope.launch(Dispatchers.IO) { // I/O スレッドで処理
-            todoDao.insert(Todo(section = "1", title = "新しいTodo", text = "詳細", onChecked = false, tag = "タグ", quantity = 0, onDeleted = false))
-        }
-    }
-
-    val onDeleteClick: (Todo) -> Unit = { todo ->
-        scope.launch(Dispatchers.IO) { // I/O スレッドで処理
-            todoDao.delete(todo)
-        }
-    }
+    var carentNum by remember { mutableStateOf(0) } // 選択されたセクション番号
+    var showDialog by remember { mutableStateOf(false) } // ダイアログ表示状態
+    val scrollListState = rememberLazyListState()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
             ScrollList(
-                listState = listState,
+                listState = scrollListState,
                 todoList = todoList,
-                onItemClicked = { todo ->
-                    selectedItem = todo
-                    scope.launch { sheetState.show() }
-                }
+                onItemClicked = { /* アイテムクリック処理 */ },
+                onSectionSelected = { selectedNum ->
+                    carentNum = selectedNum // `carentNum` を更新
+                },
+                sectionList = sectionList,
+                carentNum = carentNum // // 現在のセクション番号を渡す
             )
 
-            // ボタンの処理を渡す
             FloatingButtons(
-                onAddClick = onAddClick,
-                onDeleteClick = { selectedItem?.let(onDeleteClick) }
+                onAddClick = {
+                    scope.launch(Dispatchers.IO) {
+                        todoDao.insert(
+                            Todo(
+                                sectionNum = carentNum,
+                                title = "新しいTodo",
+                                text = "詳細",
+                                onChecked = false,
+                                tag = "タグ",
+                                quantity = 0,
+                                onDeleted = false
+                            )
+                        )
+                    }
+                },
+                onDeleteClick = {
+                    selectedItem?.let { todo ->
+                        scope.launch(Dispatchers.IO) {
+                            todoDao.delete(todo)
+                        }
+                    }
+                },
+                onListAdd = { showDialog = true },
+                onSearchClick = {
+                    // 検索処理（例: 検索ダイアログを開く）
+                    println("検索ボタンがクリックされました")
+                },
             )
-
-            if (selectedItem != null) {
-                ModalBottomSheet(
-                    onDismissRequest = { selectedItem = null },
-                    sheetState = sheetState
-                ) {
-                    DetailComponent(selectedItem!!)
-                }
-            }
         }
     }
-}
 
+    // **`ModalBottomSheet` を `FloatingButtons` の外に移動**
+    if (selectedItem != null) {
+        ModalBottomSheet(
+            onDismissRequest = { selectedItem = null },
+            sheetState = sheetState
+        ) {
+            DetailComponent(selectedItem!!)
+        }
+    }
+
+    // **Compose_plus.kt の `AddSectionDialog` を呼び出す**
+    AddSectionDialog(
+        showDialog = showDialog,
+        onDismiss = { showDialog = false },
+        onConfirm = { inputText ->
+            scope.launch(Dispatchers.IO) {
+                todoDao.insertSection(TodoSection(todoSectionTitle = inputText))
+            }
+        }
+    )
+}
 
 // トップバーのComposable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,32 +153,28 @@ fun AppTopBar() {
 fun ScrollList(
     listState: LazyListState,
     todoList: List<Todo>,
-    onItemClicked: (Todo) -> Unit
+    onItemClicked: (Todo) -> Unit,
+    onSectionSelected: (Int) -> Unit,
+    sectionList: List<TodoSection>, // セクションのリストを受け取る
+    carentNum: Int
 ) {
     LazyColumn(state = listState) {
-        // トップバー
         item {
             AppTopBar()
         }
 
-        // 固定ヘッダー
+        // **セクションをDBから取得し表示**
         stickyHeader {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-                    .background(Color(0xFF9DC183)), // ヘッダーの背景色
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Todoリスト",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White
-                )
-            }
+            HeadtitleList(
+                headtitles = sectionList.map { Headtitle(it.todoSectionTitle) },
+                carentNum = carentNum,
+                onItemSelected = { selectedNum ->
+                    onSectionSelected(selectedNum) // `carentNum` を更新
+                },
+                listState = listState // `listState` を渡す
+            )
         }
 
-        // Todo リスト
         items(todoList) { todo ->
             Text(
                 text = "${todo.title}: ${todo.quantity}",
@@ -158,7 +183,7 @@ fun ScrollList(
                     .padding(16.dp)
                     .background(Color.White, RoundedCornerShape(8.dp))
                     .padding(16.dp)
-                    .clickable { onItemClicked(todo) }, // `Todo` を渡す
+                    .clickable { onItemClicked(todo) },
                 color = Color.Black
             )
         }

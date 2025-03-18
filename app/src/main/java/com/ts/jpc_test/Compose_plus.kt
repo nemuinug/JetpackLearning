@@ -1,8 +1,11 @@
 package com.ts.jpc_test
 
+import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +29,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +45,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 //縁取り文字を作成するfun
@@ -76,21 +83,26 @@ fun OutlinedText(
     )
 }
 
-//座標が固定されているボタンアイコン
 @Composable
 fun FloatingButtons(
     onAddClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    onListAdd: () -> Unit
 ) {
+    val smallButtonSize = 56.dp
+    val bigButtonSize = 80.dp
+    val distance = 80.dp
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp), // 画面全体をカバー
-        contentAlignment = Alignment.BottomEnd // 右下を基準点に配置
+            .padding(16.dp),
+        contentAlignment = Alignment.BottomEnd
     ) {
         // 小さいボタン（真上）
         FloatingActionButton(
-            onClick = { /* 真上のボタンの処理 */ },
+            onClick = onSearchClick, // 検索処理
             modifier = Modifier
                 .size(smallButtonSize)
                 .align(Alignment.BottomEnd)
@@ -101,28 +113,28 @@ fun FloatingButtons(
             Icon(Icons.Filled.Search, contentDescription = "検索", tint = Color.White)
         }
 
-        // 小さいボタン（真横）
+        // 小さいボタン（斜め左上）
         FloatingActionButton(
-            onClick = { /* 真横のボタンの処理 */ },
+            onClick = onListAdd, // 設定処理
             modifier = Modifier
                 .size(smallButtonSize)
                 .align(Alignment.BottomEnd)
-                .offset(x = -distance * 0.8f, y = -distance * 0.8f), // 真左に配置
+                .offset(x = -distance * 0.8f, y = -distance * 0.8f), // 斜め左上に配置
             shape = RoundedCornerShape(50),
             containerColor = Color(0xFF9DC183)
         ) {
-            Icon(Icons.Filled.Settings, contentDescription = "設定", tint = Color.White)
+            Icon(Icons.Filled.Add, contentDescription = "横スクロールアイテム追加", tint = Color.White)
         }
 
-        // 小さいボタン（真横）
+        // 小さいボタン（真左）
         FloatingActionButton(
-            onClick = { /* 真横のボタンの処理 */ },
+            onClick = onDeleteClick, // 削除処理
             modifier = Modifier
                 .size(smallButtonSize)
                 .align(Alignment.BottomEnd)
                 .offset(x = -distance), // 真左に配置
             shape = RoundedCornerShape(50),
-            containerColor = Color(0xFFFFB6C1)
+            containerColor = Color(0xFFFFB6C1) // ピンク
         ) {
             Icon(
                 imageVector = Icons.Filled.Delete, // ゴミ箱アイコン
@@ -133,7 +145,7 @@ fun FloatingButtons(
 
         // 中央の大きなボタン（プラスマーク）
         FloatingActionButton(
-            onClick = { /* 大ボタンの処理 */ },
+            onClick = onAddClick, // 追加処理
             modifier = Modifier
                 .size(bigButtonSize)
                 .align(Alignment.BottomEnd), // 右下に固定
@@ -145,64 +157,108 @@ fun FloatingButtons(
     }
 }
 
+
+
 // 横スクロール可能な見出しリスト
 @Composable
-fun HeadtitleList(headtitles: List<Headtitle>) {
+fun HeadtitleList(
+    headtitles: List<Headtitle>,
+    carentNum: Int, // 現在選択されているセクション
+    onItemSelected: (Int) -> Unit,
+    listState: LazyListState // スクロール制御のための state
+) {
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0)),
+            .background(Color(0xFF9DC183)),
+        state = listState,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
+
     ) {
         itemsIndexed(headtitles) { index, headtitle ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .width(120.dp) // 固定幅を設定
+                    .height(50.dp)
+                    .clickable {
+                        onItemSelected(index) // コールバックで選択情報を渡す
+                    }
+                    .background(
+                        Color.Transparent,
+                        shape = RoundedCornerShape(8.dp)
+                    ),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = headtitle.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, // 長すぎる場合は "..." に省略
                     modifier = Modifier
                         .padding(horizontal = 5.dp, vertical = 8.dp)
-                        .background(Color.Transparent, shape = RoundedCornerShape(8.dp)) // 背景を透明に
-                        .padding(2.dp)
-                        .wrapContentSize(align = Alignment.Center), // 縦横どちらも中央配置
+                        .wrapContentSize(align = Alignment.Center),
                     style = TextStyle(
                         fontSize = MaterialTheme.typography.titleLarge.fontSize.times(0.7f),
-                        color = Color.White, // 白文字
+                        color = if (carentNum == index) Color.Black else Color.White,
                         textAlign = TextAlign.Center
                     )
                 )
+
                 // 最後のアイテムの後に Divider を描画しない
                 if (index < headtitles.lastIndex) {
                     HorizontalDivider(
                         modifier = Modifier
                             .width(1.dp)
-                            .height(8.dp) // Divider の高さを調整
-                            .align(Alignment.CenterVertically),
+                            .height(8.dp),
                         thickness = 1.dp,
                         color = Color.Gray
                     )
                 }
             }
         }
-        // **スクロールの最後に + ボタンを追加**
-        item {
-            FloatingActionButton(
-                onClick = { /* 追加ボタンの処理 */ },
-                modifier = Modifier
-                    .offset(y = 5.dp)
-                    .size(smallButtonSize * 0.7f),
-                shape = RoundedCornerShape(50),
-                containerColor = Color(0xFFFFFFFF) // 淡いピンク
-            ) {
-                Icon(
-                    modifier = Modifier
-                        .padding(8.dp),
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = "追加",
-                    tint = Color.Black
-                )
-            }
-        }
     }
 }
+
+@Composable
+fun AddSectionDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var inputText by remember { mutableStateOf("") } // 入力テキストを管理
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("新しいセクションを追加") },
+            text = {
+                Column {
+                    Text("セクション名を入力してください:")
+                    TextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (inputText.isNotBlank()) {
+                            onConfirm(inputText) // 確定時にテキストを渡す
+                            inputText = "" // 入力をリセット
+                            onDismiss() // ダイアログを閉じる
+                        }
+                    }
+                ) {
+                    Text("追加")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("キャンセル")
+                }
+            }
+        )
+    }
+}
+

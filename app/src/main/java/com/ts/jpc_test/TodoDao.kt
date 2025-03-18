@@ -25,4 +25,14 @@ interface TodoDao {
 
     @Query("SELECT * FROM todo_table WHERE tag = :tag")
     fun getTodosByTag(tag: String): Flow<List<Todo>> //指定されたタグを持つタスクを取得する。
+
+    // **TodoSection 用のメソッドを追加**
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSection(todoSection: TodoSection) // `TodoSection` を追加
+
+    @Query("SELECT * FROM todo_section_table ORDER BY todoSectionNum ASC")
+    fun getAllSections(): Flow<List<TodoSection>> // すべてのセクションを取得
+
+    @Delete
+    suspend fun deleteSection(todoSection: TodoSection) // 特定のセクションを削除
 }
