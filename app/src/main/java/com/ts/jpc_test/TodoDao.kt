@@ -32,6 +32,12 @@ interface TodoDao {
     @Query("SELECT * FROM todo_section_table ORDER BY todoSectionNum ASC")
     suspend fun getAllSectionsNow(): List<TodoSection> // Flow ではなく即時取得
 
+    @Query("SELECT * FROM todo_table WHERE onDeleted = 0 ORDER BY id ASC")
+    fun getActiveTodos(): Flow<List<Todo>> // 削除フラグが立っていないデータのみ取得
+
+    @Query("UPDATE todo_table SET onDeleted = 1 WHERE id = :todoId")
+    suspend fun markAsDeleted(todoId: Int) // 指定したIDのタスクを論理削除
+
     // **TodoSection 用のメソッドを追加**
     @Query("SELECT COUNT(*) FROM todo_section_table")
     suspend fun getSectionCount(): Int // セクション数を取得

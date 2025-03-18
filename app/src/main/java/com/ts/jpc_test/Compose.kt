@@ -1,5 +1,6 @@
 package com.ts.jpc_test
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,53 +24,63 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // データクラス : ヘッダーのセクション情報を保持
 data class Headtitle(val title: String)
 
-// Composable関数 : メイン画面のUIを構築
+@SuppressLint("UnrememberedMutableState")
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MainComponent(todoDao: TodoDao) {
-    val listState = rememberLazyListState()
+    val listState = rememberLazyListState()  // 修正: 統一
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     var selectedItem by remember { mutableStateOf<Todo?>(null) }
-    val todoList by todoDao.getAll().collectAsState(initial = emptyList())
+    val todoList by todoDao.getActiveTodos().collectAsState(initial = emptyList())
     val sectionList by todoDao.getAllSections().collectAsState(initial = emptyList()) // セクションリスト取得
 
     var carentNum by remember { mutableStateOf(0) } // 選択されたセクション番号
     var showDialog by remember { mutableStateOf(false) } // ダイアログ表示状態
-    val scrollListState = rememberLazyListState()
 
-    //最初のセクションで初期値を挿入
+    // `filteredTodoList` を `derivedStateOf` で最適化
+    val filteredTodoList by derivedStateOf {
+        todoList.filter { it.sectionNum == carentNum }
+    }
+
+    // DBアクセスの最適化
     LaunchedEffect(Unit) {
         scope.launch(Dispatchers.IO) {
             val sectionId = initialAccess(todoDao) ?: return@launch
-            carentNum = sectionId // 例のセクション番号を設定
+            withContext(Dispatchers.Main) {
+                carentNum = sectionId
+            }
         }
     }
 
-
-    LaunchedEffect(sectionList) {
-        if (sectionList.isNotEmpty() && carentNum == 0) {
-            carentNum = sectionList.first().todoSectionNum
+    // `selectedItem` の状態管理
+    LaunchedEffect(selectedItem) {
+        if (selectedItem != null) {
+            sheetState.show()
+        } else {
+            sheetState.hide()
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
             ScrollList(
-                listState = scrollListState,
-                todoList = todoList,
-                onItemClicked = { /* アイテムクリック処理 */ },
-                onSectionSelected = { selectedNum ->
-                    carentNum = selectedNum // `carentNum` を更新
-                },
+                listState = listState, // 修正: 統一
+                todoList = filteredTodoList, // 修正: 事前にフィルタリング
+                onItemClicked = { selectedItem = it },
+                onSectionSelected = { selectedNum -> carentNum = selectedNum },
                 sectionList = sectionList,
-                carentNum = carentNum // // 現在のセクション番号を渡す
+                carentNum = carentNum,
+                scope = scope,
+                todoDao = todoDao
             )
 
             FloatingButtons(
@@ -97,14 +108,12 @@ fun MainComponent(todoDao: TodoDao) {
                 },
                 onListAdd = { showDialog = true },
                 onSearchClick = {
-                    // 検索処理（例: 検索ダイアログを開く）
-                    println("検索ボタンがクリックされました") //todo 検索処理
-                },
+                    println("検索ボタンがクリックされました")
+                }
             )
         }
     }
 
-    // **`ModalBottomSheet` を `FloatingButtons` の外に移動**
     if (selectedItem != null) {
         ModalBottomSheet(
             onDismissRequest = { selectedItem = null },
@@ -114,7 +123,6 @@ fun MainComponent(todoDao: TodoDao) {
         }
     }
 
-    // **Compose_plus.kt の `AddSectionDialog` を呼び出す**
     AddSectionDialog(
         showDialog = showDialog,
         onDismiss = { showDialog = false },
@@ -179,7 +187,9 @@ fun ScrollList(
     onItemClicked: (Todo) -> Unit,
     onSectionSelected: (Int) -> Unit,
     sectionList: List<TodoSection>,
-    carentNum: Int
+    carentNum: Int,
+    scope: CoroutineScope,
+    todoDao: TodoDao
 ) {
     val filteredTodoList by remember(todoList, carentNum) {
         mutableStateOf(todoList.filter { it.sectionNum == carentNum })
@@ -202,6 +212,11 @@ fun ScrollList(
         }
 
         items(filteredTodoList) { todo ->
+            SwipeToDeleteTodo(todo) { deletedTodo ->
+                scope.launch(Dispatchers.IO) {
+                    todoDao.markAsDeleted(deletedTodo.id)
+                }
+            }
             Text(
                 text = buildAnnotatedString {
                     withStyle(style = SpanStyle(color = Color.Blue)) { // タイトルを青色に変更

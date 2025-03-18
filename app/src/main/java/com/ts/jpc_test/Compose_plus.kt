@@ -3,6 +3,7 @@ package com.ts.jpc_test
 import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -331,5 +333,15 @@ suspend fun initialAccess(todoDao: TodoDao): Int? {
     }
 }
 
+@Composable
+fun SwipeToDeleteTodo(todo: Todo, onDelete: (Todo) -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(8.dp).background(Color.White, RoundedCornerShape(8.dp)).pointerInput(Unit) {
+            detectHorizontalDragGestures { _, dragAmount -> if (dragAmount < -100) { onDelete(todo) } }
+        }.padding(16.dp)
+    ) {
+        Text(text = todo.title, color = Color.Black)
+    }
+}
 
 

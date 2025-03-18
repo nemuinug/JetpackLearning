@@ -6,7 +6,7 @@ import androidx.room.RoomDatabase
 import android.content.Context
 
 
-@Database(entities = [Todo::class, TodoSection::class], version = 14, exportSchema = false)
+@Database(entities = [Todo::class, TodoSection::class], version = 17, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao //DAO (Data Access Object) を取得するための抽象メソッド。
 
