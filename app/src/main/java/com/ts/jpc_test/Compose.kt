@@ -39,7 +39,7 @@ fun MainComponent(todoDao: TodoDao) {
     // ボタン押下時の処理を定義
     val onAddClick: () -> Unit = {
         scope.launch(Dispatchers.IO) { // I/O スレッドで処理
-            todoDao.insert(Todo(section = "1", title = "新しいTodo", text = "詳細", isChecked = true, tag = "タグ", quantity = 0))
+            todoDao.insert(Todo(section = "1", title = "新しいTodo", text = "詳細", onChecked = false, tag = "タグ", quantity = 0, onDeleted = false))
         }
     }
 

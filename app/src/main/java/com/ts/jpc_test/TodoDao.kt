@@ -15,7 +15,7 @@ interface TodoDao {
     suspend fun insert(todo: Todo)// データを新規追加。すでに同じデータがあった場合は上書き
 
     @Update
-    suspend fun update(todo: Todo)
+    suspend fun update(todo: Todo)// 更新
 
     @Delete
     suspend fun delete(todo: Todo)// 特定の ID のタスクを削除
