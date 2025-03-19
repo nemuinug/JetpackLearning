@@ -9,7 +9,7 @@ import android.content.Context
 @Database(entities = [Todo::class, TodoSection::class], version = 1, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun todoDao(): TodoDao //DAO (Data Access Object) を取得するための抽象メソッド。
-    abstract fun sectionDao(): SectionDao
+    abstract fun sectionDao(): TodoSectionDao
 
     companion object {
         @Volatile

@@ -86,7 +86,7 @@ fun OutlinedText(
 @Composable
 fun FloatingButtons(
     todoDao: TodoDao,
-    sectionDao: SectionDao,
+    sectionDao: TodoSectionDao,
     carentNum: Int,
     onCarentNumChange: (Int) -> Unit,
     onAddClick: () -> Unit,
@@ -272,13 +272,13 @@ fun AddSectionDialog(
     }
 }
 
-suspend fun initialAccess(sectionDao: SectionDao, todoDao: TodoDao): Int? {
+suspend fun initialAccess(sectionDao: TodoSectionDao, todoDao: TodoDao): Int? {
     return withContext(Dispatchers.IO) {
         if (sectionDao.getSectionCount() == 0) {
             val exampleSection = TodoSection(
                 todoSectionTitle = "例", todoOnDeleted = false
             )
-            val exampleSectionId: Long = sectionDao.insertSection(exampleSection)
+            val exampleSectionId: Long = sectionDao.insert(exampleSection)
 
             // 直後にデータベースから ID を確認
             val updatedSections = todoDao.getAllSectionsNow()
@@ -295,7 +295,7 @@ suspend fun initialAccess(sectionDao: SectionDao, todoDao: TodoDao): Int? {
                         onChecked = false,
                         tag = "デフォルト",
                         quantity = 1,
-                        onDeleted = false
+                        isDeleted = false
                     ),
                     Todo(
                         sectionNum = exampleSectionNum,
@@ -304,7 +304,7 @@ suspend fun initialAccess(sectionDao: SectionDao, todoDao: TodoDao): Int? {
                         onChecked = false,
                         tag = "デフォルト",
                         quantity = 1,
-                        onDeleted = false
+                        isDeleted = false
                     ),
                     Todo(
                         sectionNum = exampleSectionNum,
@@ -313,7 +313,7 @@ suspend fun initialAccess(sectionDao: SectionDao, todoDao: TodoDao): Int? {
                         onChecked = false,
                         tag = "デフォルト",
                         quantity = 1,
-                        onDeleted = false
+                        isDeleted = false
                     ),
                     Todo(
                         sectionNum = exampleSectionNum,
@@ -322,7 +322,7 @@ suspend fun initialAccess(sectionDao: SectionDao, todoDao: TodoDao): Int? {
                         onChecked = false,
                         tag = "デフォルト",
                         quantity = 1,
-                        onDeleted = false
+                        isDeleted = false
                     ),
                     Todo(
                         sectionNum = exampleSectionNum,
@@ -331,7 +331,7 @@ suspend fun initialAccess(sectionDao: SectionDao, todoDao: TodoDao): Int? {
                         onChecked = false,
                         tag = "デフォルト",
                         quantity = 1,
-                        onDeleted = false
+                        isDeleted = false
                     ),
                 )
             )

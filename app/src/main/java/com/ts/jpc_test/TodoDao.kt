@@ -24,18 +24,18 @@ interface TodoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTodos(todos: List<Todo>) //複数のアイテムをまとめて挿入
 
-    @Query("SELECT * FROM todo_table ORDER BY id ASC")
+    @Query("SELECT * FROM todo ORDER BY id ASC")
     fun getAll(): Flow<List<Todo>> // すべてのタスクを取得
 
-    @Query("SELECT * FROM todo_table WHERE tag = :tag")
+    @Query("SELECT * FROM todo WHERE tag = :tag")
     fun getTodosByTag(tag: String): Flow<List<Todo>> //指定されたタグを持つタスクを取得する。
 
-    @Query("SELECT * FROM todo_section_table ORDER BY todoSectionNum ASC")
+    @Query("SELECT * FROM todoSection ORDER BY todoSectionNum ASC")
     suspend fun getAllSectionsNow(): List<TodoSection> // Flow ではなく即時取得
 
-    @Query("SELECT * FROM todo_table WHERE isDeleted = 0 ORDER BY id ASC")
+    @Query("SELECT * FROM todo WHERE isDeleted = 0 ORDER BY id ASC")
     fun getActiveTodos(): Flow<List<Todo>> // 削除フラグが立っていないデータのみ取得
 
-    @Query("UPDATE todo_table SET isDeleted = 1 WHERE id = :todoId")
+    @Query("UPDATE todo SET isDeleted = 1 WHERE id = :todoId")
     suspend fun markAsDeleted(todoId: Int) // 指定したIDのタスクを論理削除
 }

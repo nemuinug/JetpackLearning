@@ -18,7 +18,7 @@ import com.ts.jpc_test.ui.theme.JPC_testTheme
 class MainActivity : ComponentActivity() {
     private lateinit var database: AppDatabase
     private lateinit var todoDao: TodoDao
-    private lateinit var sectionDao: SectionDao
+    private lateinit var sectionDao: TodoSectionDao
 
     // onCreate() メソッド:アクティビティが作成されたときに実行
     override fun onCreate(savedInstanceState: Bundle?) {

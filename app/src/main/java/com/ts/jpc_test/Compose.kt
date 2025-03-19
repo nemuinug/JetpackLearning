@@ -33,7 +33,7 @@ data class Headtitle(val title: String)
 // Composable関数 : メイン画面のUIを構築
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun MainComponent(sectionDao: SectionDao, todoDao: TodoDao) {
+fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
     val listState = rememberLazyListState()
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
@@ -92,14 +92,14 @@ fun MainComponent(sectionDao: SectionDao, todoDao: TodoDao) {
                                 onChecked = false,
                                 tag = "タグ",
                                 quantity = 0,
-                                onDeleted = false
+                                isDeleted = false
                             )
                         )
                     }
                 },
                 onDeleteClick = { // ここで削除処理を追加
                     scope.launch(Dispatchers.IO) {
-                        sectionDao.logicallyDeleteSection(carentNum) // 論理削除
+                        sectionDao.deleteLogicallySection(carentNum) // 論理削除
 
                         // **削除後の遷移先を決定**
                         val updatedSections =
@@ -131,7 +131,7 @@ fun MainComponent(sectionDao: SectionDao, todoDao: TodoDao) {
         onDismiss = { canShowDialog = false },
         onConfirm = { inputText ->
             scope.launch(Dispatchers.IO) {
-                sectionDao.insertSection(
+                sectionDao.insert(
                     TodoSection(
                         todoSectionTitle = inputText,
                         todoOnDeleted = false
