@@ -23,4 +23,7 @@ interface TodoSectionDao {
 
     @Query("UPDATE todoSection SET isTodoDeleted = 1 WHERE todoSectionNum = :sectionNum")
     suspend fun deleteLogicallySection(sectionNum: Int)
+
+    @Query("SELECT * FROM todoSection ORDER BY todoSectionNum ASC")
+    suspend fun getAllSectionsNow(): List<TodoSection> // Flow ではなく即時取得
 }

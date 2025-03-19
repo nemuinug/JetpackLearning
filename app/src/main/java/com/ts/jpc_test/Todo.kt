@@ -16,11 +16,5 @@ data class Todo(
     @ColumnInfo(name = "isDeleted") val isDeleted: Boolean
 )
 
-@Entity(tableName = "todoSection")
-data class TodoSection(
-    @PrimaryKey(autoGenerate = true) val todoSectionNum: Int = 0,// 自動でIDを増やす
-    @ColumnInfo(name = "todoSectionTitle") val todoSectionTitle: String,// 横リストアイテムタイトル
-    @ColumnInfo(name = "isTodoDeleted") val todoOnDeleted: Boolean
-)
 
 

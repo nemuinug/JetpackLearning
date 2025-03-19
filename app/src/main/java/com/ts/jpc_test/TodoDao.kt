@@ -30,9 +30,6 @@ interface TodoDao {
     @Query("SELECT * FROM todo WHERE tag = :tag")
     fun getTodosByTag(tag: String): Flow<List<Todo>> //指定されたタグを持つタスクを取得する。
 
-    @Query("SELECT * FROM todoSection ORDER BY todoSectionNum ASC")
-    suspend fun getAllSectionsNow(): List<TodoSection> // Flow ではなく即時取得
-
     @Query("SELECT * FROM todo WHERE isDeleted = 0 ORDER BY id ASC")
     fun getActiveTodos(): Flow<List<Todo>> // 削除フラグが立っていないデータのみ取得
 
