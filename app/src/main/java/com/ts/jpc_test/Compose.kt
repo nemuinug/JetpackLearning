@@ -89,7 +89,7 @@ fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
                                 sectionNum = carentNum,
                                 title = "新しいTodo",
                                 text = "詳細",
-                                onChecked = false,
+                                isChecked = false,
                                 tag = "タグ",
                                 quantity = 0,
                                 isDeleted = false
@@ -103,7 +103,8 @@ fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
 
                         // **削除後の遷移先を決定**
                         val updatedSections =
-                            todoDao.getAllSectionsNow().filter { !it.todoOnDeleted }
+                            sectionDao.getAllSectionsNow().filter { !it.todoOnDeleted }
+
                         val currentIndex =
                             updatedSections.indexOfFirst { it.todoSectionNum == carentNum }
 

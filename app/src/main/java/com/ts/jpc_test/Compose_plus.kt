@@ -173,7 +173,7 @@ fun FloatingButtons(
                 sectionDao.deleteSection(carentNum) // 現在のグループを論理削除
 
                 // **削除後の遷移先を決定**
-                val updatedSections = todoDao.getAllSectionsNow().filter { !it.todoOnDeleted }
+                val updatedSections = sectionDao.getAllSectionsNow().filter { !it.todoOnDeleted }
                 val currentIndex = updatedSections.indexOfFirst { it.todoSectionNum == carentNum }
 
                 if (updatedSections.isNotEmpty()) {
@@ -281,7 +281,7 @@ suspend fun initialAccess(sectionDao: TodoSectionDao, todoDao: TodoDao): Int? {
             val exampleSectionId: Long = sectionDao.insert(exampleSection)
 
             // 直後にデータベースから ID を確認
-            val updatedSections = todoDao.getAllSectionsNow()
+            val updatedSections = sectionDao.getAllSectionsNow()
             val exampleSectionNum =
                 updatedSections.find { it.todoSectionTitle == "例" }?.todoSectionNum
                     ?: return@withContext null
@@ -292,7 +292,7 @@ suspend fun initialAccess(sectionDao: TodoSectionDao, todoDao: TodoDao): Int? {
                         sectionNum = exampleSectionNum,
                         title = "グループを追加",
                         text = "緑色の＋ボタン",
-                        onChecked = false,
+                        isChecked = false,
                         tag = "デフォルト",
                         quantity = 1,
                         isDeleted = false
@@ -301,7 +301,7 @@ suspend fun initialAccess(sectionDao: TodoSectionDao, todoDao: TodoDao): Int? {
                         sectionNum = exampleSectionNum,
                         title = "グループを削除",
                         text = "🗑ボタン",
-                        onChecked = false,
+                        isChecked = false,
                         tag = "デフォルト",
                         quantity = 1,
                         isDeleted = false
@@ -310,7 +310,7 @@ suspend fun initialAccess(sectionDao: TodoSectionDao, todoDao: TodoDao): Int? {
                         sectionNum = exampleSectionNum,
                         title = "アイテムを追加",
                         text = "青色の＋ボタン",
-                        onChecked = false,
+                        isChecked = false,
                         tag = "デフォルト",
                         quantity = 1,
                         isDeleted = false
@@ -319,7 +319,7 @@ suspend fun initialAccess(sectionDao: TodoSectionDao, todoDao: TodoDao): Int? {
                         sectionNum = exampleSectionNum,
                         title = "アイテムを削除",
                         text = "アイテムをスワイプ",
-                        onChecked = false,
+                        isChecked = false,
                         tag = "デフォルト",
                         quantity = 1,
                         isDeleted = false
@@ -328,7 +328,7 @@ suspend fun initialAccess(sectionDao: TodoSectionDao, todoDao: TodoDao): Int? {
                         sectionNum = exampleSectionNum,
                         title = "アイテムを検索",
                         text = "🔍ボタン",
-                        onChecked = false,
+                        isChecked = false,
                         tag = "デフォルト",
                         quantity = 1,
                         isDeleted = false
