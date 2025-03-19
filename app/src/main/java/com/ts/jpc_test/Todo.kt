@@ -13,14 +13,14 @@ data class Todo(
     @ColumnInfo(name = "onChecked") val onChecked: Boolean,
     @ColumnInfo(name = "tag") val tag: String,
     @ColumnInfo(name = "quantity") val quantity: Int,
-    @ColumnInfo(name = "onDeleted") val onDeleted: Boolean
+    @ColumnInfo(name = "isDeleted") val onDeleted: Boolean
 )
 
 @Entity(tableName = "todo_section_table")
 data class TodoSection(
     @PrimaryKey(autoGenerate = true) val todoSectionNum: Int = 0,// 自動でIDを増やす
     @ColumnInfo(name = "todoSectionTitle") val todoSectionTitle: String,// 横リストアイテムタイトル
-    @ColumnInfo(name = "todoOnDeleted") val todoOnDeleted: Boolean
+    @ColumnInfo(name = "isTodoDeleted") val todoOnDeleted: Boolean
 )
 
 

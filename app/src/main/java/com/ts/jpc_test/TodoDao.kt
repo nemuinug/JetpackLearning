@@ -7,18 +7,19 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+
 // データアクセスオブジェクト（DAO）：Room データベースの操作を定義
 @Dao
 interface TodoDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(todo: Todo)// データを新規追加。すでに同じデータがあった場合は上書き
+    suspend fun insert(todo: Todo) // データを新規追加。すでに同じデータがあった場合は上書き
 
     @Update
-    suspend fun update(todo: Todo)// 更新
+    suspend fun update(todo: Todo) // 更新
 
     @Delete
-    suspend fun delete(todo: Todo)// 特定の ID のタスクを削除
+    suspend fun delete(todo: Todo) // 特定の ID のタスクを削除
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTodos(todos: List<Todo>) //複数のアイテムをまとめて挿入
@@ -32,22 +33,9 @@ interface TodoDao {
     @Query("SELECT * FROM todo_section_table ORDER BY todoSectionNum ASC")
     suspend fun getAllSectionsNow(): List<TodoSection> // Flow ではなく即時取得
 
-    @Query("SELECT * FROM todo_table WHERE onDeleted = 0 ORDER BY id ASC")
+    @Query("SELECT * FROM todo_table WHERE isDeleted = 0 ORDER BY id ASC")
     fun getActiveTodos(): Flow<List<Todo>> // 削除フラグが立っていないデータのみ取得
 
-    @Query("UPDATE todo_table SET onDeleted = 1 WHERE id = :todoId")
+    @Query("UPDATE todo_table SET isDeleted = 1 WHERE id = :todoId")
     suspend fun markAsDeleted(todoId: Int) // 指定したIDのタスクを論理削除
-
-    // **TodoSection 用のメソッドを追加**
-    @Query("SELECT COUNT(*) FROM todo_section_table")
-    suspend fun getSectionCount(): Int // セクション数を取得
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSection(todoSection: TodoSection): Long
-
-    @Query("SELECT * FROM todo_section_table ORDER BY todoSectionNum ASC")
-    fun getAllSections(): Flow<List<TodoSection>> // すべてのセクションを取得
-
-    @Delete
-    suspend fun deleteSection(todoSection: TodoSection) // 特定のセクションを削除
 }

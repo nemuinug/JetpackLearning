@@ -18,6 +18,8 @@ import com.ts.jpc_test.ui.theme.JPC_testTheme
 class MainActivity : ComponentActivity() {
     private lateinit var database: AppDatabase
     private lateinit var todoDao: TodoDao
+    private lateinit var sectionDao: SectionDao
+
     // onCreate() メソッド:アクティビティが作成されたときに実行
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState) // 親クラスのonCreateを呼び出し
@@ -25,6 +27,7 @@ class MainActivity : ComponentActivity() {
         // Room データベースのインスタンスを取得
         database = AppDatabase.getDatabase(this)
         todoDao = database.todoDao()
+        sectionDao = database.sectionDao()
         enableEdgeToEdge() // フルスクリーン(エッジからエッジまで描画)を有効化
 
         setContent { // Jetpack ComposeのUI
@@ -34,7 +37,7 @@ class MainActivity : ComponentActivity() {
 
                     Column(modifier = Modifier.padding(innerPadding)) {
                         // メインのUIを表示
-                        MainComponent(todoDao)
+                        MainComponent(sectionDao = sectionDao, todoDao = todoDao)
                     }
                 }
             }

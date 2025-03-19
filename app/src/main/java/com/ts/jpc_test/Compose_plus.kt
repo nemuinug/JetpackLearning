@@ -3,7 +3,6 @@ package com.ts.jpc_test
 import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,16 +32,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -70,35 +70,37 @@ fun OutlinedText(
     var textLayoutResult: TextLayoutResult? by remember {
         mutableStateOf(null)
     }
-    Text(
-        text = text,
-        style = textStyle,
-        onTextLayout = {
-            textLayoutResult = it
-        },
-        modifier = modifier
-            .drawBehind {
-                textLayoutResult?.let {
-                    drawText(
-                        textLayoutResult = it,
-                        drawStyle = stroke,
-                        color = strokeColor,
-                    )
-                }
-            }
-    )
+    Text(text = text, style = textStyle, onTextLayout = {
+        textLayoutResult = it
+    }, modifier = modifier.drawBehind {
+        textLayoutResult?.let {
+            drawText(
+                textLayoutResult = it,
+                drawStyle = stroke,
+                color = strokeColor,
+            )
+        }
+    })
 }
 
 @Composable
 fun FloatingButtons(
+    todoDao: TodoDao,
+    sectionDao: SectionDao,
+    carentNum: Int,
+    onCarentNumChange: (Int) -> Unit,
     onAddClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onSearchClick: () -> Unit,
-    onListAdd: () -> Unit
+    onListAdd: () -> Unit,
 ) {
     val smallButtonSize = 56.dp
     val bigButtonSize = 80.dp
     val distance = 80.dp
+    val scope = rememberCoroutineScope()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val sectionListState = sectionDao.getAllSections().collectAsState(initial = emptyList())
+    val sectionList = sectionListState.value.filter { !it.todoOnDeleted }
 
     Box(
         modifier = Modifier
@@ -112,7 +114,7 @@ fun FloatingButtons(
             modifier = Modifier
                 .size(smallButtonSize)
                 .align(Alignment.BottomEnd)
-                .offset(y = -distance), // 真上に配置
+                .offset(y = -distance),
             shape = RoundedCornerShape(50),
             containerColor = Color(0xFF1E90FF) // 明るめのブルー
         ) {
@@ -121,28 +123,24 @@ fun FloatingButtons(
 
         // 小さいボタン（斜め左上）
         FloatingActionButton(
-            onClick = onListAdd, // 設定処理
+            onClick = onListAdd, // グループ追加処理
             modifier = Modifier
                 .size(smallButtonSize)
                 .align(Alignment.BottomEnd)
-                .offset(x = -distance * 0.8f, y = -distance * 0.8f), // 斜め左上に配置
+                .offset(x = -distance * 0.8f, y = -distance * 0.8f),
             shape = RoundedCornerShape(50),
             containerColor = Color(0xFF9DC183)
         ) {
-            Icon(
-                Icons.Filled.Add,
-                contentDescription = "横スクロールアイテム追加",
-                tint = Color.White
-            )
+            Icon(Icons.Filled.Add, contentDescription = "グループ追加", tint = Color.White)
         }
 
         // 小さいボタン（真左）
         FloatingActionButton(
-            onClick = onDeleteClick, // 削除処理
+            onClick = { showDeleteDialog = true }, // 削除ダイアログを開く
             modifier = Modifier
                 .size(smallButtonSize)
                 .align(Alignment.BottomEnd)
-                .offset(x = -distance), // 真左に配置
+                .offset(x = -distance),
             shape = RoundedCornerShape(50),
             containerColor = Color(0xFFFFB6C1) // ピンク
         ) {
@@ -153,25 +151,51 @@ fun FloatingButtons(
             )
         }
 
-        // 中央の大きなボタン（プラスマーク）
+        // 中央の大きなボタン（追加）
         FloatingActionButton(
             onClick = onAddClick, // 追加処理
             modifier = Modifier
                 .size(bigButtonSize)
-                .align(Alignment.BottomEnd), // 右下に固定
+                .align(Alignment.BottomEnd),
             shape = RoundedCornerShape(50),
             containerColor = Color(0xFF00BFFF) // 明るい水色
         ) {
             Icon(Icons.Filled.Add, contentDescription = "追加", tint = Color.White)
         }
     }
-}
 
+    // 削除確認ダイアログ
+    DeleteConfirmationDialog(
+        showDialog = showDeleteDialog,
+        onDismiss = { showDeleteDialog = false },
+        onConfirm = {
+            scope.launch(Dispatchers.IO) {
+                sectionDao.deleteSection(carentNum) // 現在のグループを論理削除
+
+                // **削除後の遷移先を決定**
+                val updatedSections = todoDao.getAllSectionsNow().filter { !it.todoOnDeleted }
+                val currentIndex = updatedSections.indexOfFirst { it.todoSectionNum == carentNum }
+
+                if (updatedSections.isNotEmpty()) {
+                    val newCarentNum = if (currentIndex > 0) {
+                        updatedSections[currentIndex - 1].todoSectionNum // 左のグループに移動
+                    } else {
+                        updatedSections.first().todoSectionNum // 先頭のグループに移動
+                    }
+                    withContext(Dispatchers.Main) {
+                        onCarentNumChange(newCarentNum) // `carentNum` を更新
+                    }
+                }
+            }
+            showDeleteDialog = false
+        }
+    )
+}
 
 // 横スクロール可能な見出しリスト
 @Composable
 fun HeadtitleList(
-    headtitles: List<TodoSection>,
+    headtitles: List<TodoSection>, // 修正後のリストを渡す
     carentNum: Int,
     onItemSelected: (Int) -> Unit,
     listState: LazyListState
@@ -184,20 +208,16 @@ fun HeadtitleList(
         horizontalArrangement = Arrangement.spacedBy(16.dp)
 
     ) {
-        itemsIndexed(headtitles) { _, headtitle -> // `index` ではなく `headtitle`
-            Box(
-                modifier = Modifier
-                    .width(120.dp)
-                    .height(50.dp)
-                    .clickable {
-                        onItemSelected(headtitle.todoSectionNum) // `todoSectionNum` を渡す
-                    }
-                    .background(
-                        Color.Transparent,
-                        shape = RoundedCornerShape(8.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
+        itemsIndexed(headtitles.filter { !it.todoOnDeleted }) { _, headtitle ->
+            Box(modifier = Modifier
+                .width(120.dp)
+                .height(50.dp)
+                .clickable {
+                    onItemSelected(headtitle.todoSectionNum) // `todoSectionNum` を渡す
+                }
+                .background(
+                    Color.Transparent, shape = RoundedCornerShape(8.dp)
+                ), contentAlignment = Alignment.Center) {
                 Text(
                     text = headtitle.todoSectionTitle,
                     maxLines = 1,
@@ -216,39 +236,31 @@ fun HeadtitleList(
     }
 }
 
-
 @Composable
 fun AddSectionDialog(
-    showDialog: Boolean,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    showDialog: Boolean, onDismiss: () -> Unit, onConfirm: (String) -> Unit
 ) {
     var inputText by remember { mutableStateOf("") } // 入力テキストを管理
 
     if (showDialog) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
+        AlertDialog(onDismissRequest = onDismiss,
             title = { Text("新しいセクションを追加") },
             text = {
                 Column {
                     Text("セクション名を入力してください:")
                     TextField(
-                        value = inputText,
-                        onValueChange = { inputText = it },
-                        singleLine = true
+                        value = inputText, onValueChange = { inputText = it }, singleLine = true
                     )
                 }
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (inputText.isNotBlank()) {
-                            onConfirm(inputText) // 確定時にテキストを渡す
-                            inputText = "" // 入力をリセット
-                            onDismiss() // ダイアログを閉じる
-                        }
+                TextButton(onClick = {
+                    if (inputText.isNotBlank()) {
+                        onConfirm(inputText) // 確定時にテキストを渡す
+                        inputText = "" // 入力をリセット
+                        onDismiss() // ダイアログを閉じる
                     }
-                ) {
+                }) {
                     Text("追加")
                 }
             },
@@ -256,19 +268,17 @@ fun AddSectionDialog(
                 TextButton(onClick = onDismiss) {
                     Text("キャンセル")
                 }
-            }
-        )
+            })
     }
 }
 
-suspend fun initialAccess(todoDao: TodoDao): Int? {
+suspend fun initialAccess(sectionDao: SectionDao, todoDao: TodoDao): Int? {
     return withContext(Dispatchers.IO) {
-        if (todoDao.getSectionCount() == 0) {
+        if (sectionDao.getSectionCount() == 0) {
             val exampleSection = TodoSection(
-                todoSectionTitle = "例",
-                todoOnDeleted = false
+                todoSectionTitle = "例", todoOnDeleted = false
             )
-            val exampleSectionId: Long = todoDao.insertSection(exampleSection)
+            val exampleSectionId: Long = sectionDao.insertSection(exampleSection)
 
             // 直後にデータベースから ID を確認
             val updatedSections = todoDao.getAllSectionsNow()
@@ -334,14 +344,29 @@ suspend fun initialAccess(todoDao: TodoDao): Int? {
 }
 
 @Composable
-fun SwipeToDeleteTodo(todo: Todo, onDelete: (Todo) -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxWidth().padding(8.dp).background(Color.White, RoundedCornerShape(8.dp)).pointerInput(Unit) {
-            detectHorizontalDragGestures { _, dragAmount -> if (dragAmount < -100) { onDelete(todo) } }
-        }.padding(16.dp)
-    ) {
-        Text(text = todo.title, color = Color.Black)
+fun DeleteConfirmationDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("グループ削除の確認") },
+            text = { Text("本当にこのグループを削除しますか？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onConfirm() // 確定時の処理を実行
+                    onDismiss() // ダイアログを閉じる
+                }) {
+                    Text("削除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("キャンセル")
+                }
+            }
+        )
     }
 }
-
-
