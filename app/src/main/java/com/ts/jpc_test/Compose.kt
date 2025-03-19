@@ -18,10 +18,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // データクラス : ヘッダーのセクション情報を保持
 data class Headtitle(val title: String)
@@ -29,55 +33,114 @@ data class Headtitle(val title: String)
 // Composable関数 : メイン画面のUIを構築
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun MainComponent(todoDao: TodoDao) {
-    val listState = rememberLazyListState() // リストのスクロール状態を管理
-    val sheetState = rememberModalBottomSheetState() // ボトムシートの状態を管理
-    val scope = rememberCoroutineScope() // 並行処理を管理するためのスコープ
-    var selectedItem by remember { mutableStateOf<Todo?>(null) } // 選択されたアイテムを記憶
-    val todoList by remember { todoDao.getAll() }.collectAsState(initial = emptyList())
+fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
+    val listState = rememberLazyListState()
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+    var selectedItem by remember { mutableStateOf<Todo?>(null) }
+    val todoList by todoDao.getAll().collectAsState(initial = emptyList())
+    val sectionListState = sectionDao.getAllSections().collectAsState(initial = emptyList())
+    val sectionList = sectionListState.value.filter { !it.todoOnDeleted } // フィルタリング
+    var carentNum by remember { mutableStateOf(0) } // 選択されたセクション番号
+    var canShowDialog by remember { mutableStateOf(false) } // ダイアログ表示状態
+    val scrollListState = rememberLazyListState()   // LazyColumn用
+    val headerRowListState = rememberLazyListState()  // LazyRow用（新規に追加）
 
-    // ボタン押下時の処理を定義
-    val onAddClick: () -> Unit = {
-        scope.launch(Dispatchers.IO) { // I/O スレッドで処理
-            todoDao.insert(Todo(section = "1", title = "新しいTodo", text = "詳細", isChecked = true, tag = "タグ", quantity = 0))
+    // 最初のセクションで初期値を挿入
+    LaunchedEffect(Unit) {
+        scope.launch(Dispatchers.IO) {
+            val sectionId = initialAccess(sectionDao, todoDao) ?: return@launch
+            withContext(Dispatchers.Main) {
+                carentNum = sectionId // 例のセクション番号を設定
+            }
         }
     }
 
-    val onDeleteClick: (Todo) -> Unit = { todo ->
-        scope.launch(Dispatchers.IO) { // I/O スレッドで処理
-            todoDao.delete(todo)
+    // 削除後に移動するため、最初の `carentNum` を設定
+    LaunchedEffect(sectionList) {
+        if (sectionList.isNotEmpty() && carentNum == 0) {
+            carentNum = sectionList.first().todoSectionNum
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
             ScrollList(
-                listState = listState,
+                listState = scrollListState,
                 todoList = todoList,
-                onItemClicked = { todo ->
-                    selectedItem = todo
-                    scope.launch { sheetState.show() }
-                }
+                onItemClicked = { /* アイテムクリック処理 */ },
+                onSectionSelected = { selectedNum ->
+                    carentNum = selectedNum // `carentNum` を更新
+                },
+                sectionList = sectionList,
+                carentNum = carentNum, // 現在のセクション番号を渡す
+                headerRowListState = headerRowListState
             )
 
-            // ボタンの処理を渡す
             FloatingButtons(
-                onAddClick = onAddClick,
-                onDeleteClick = { selectedItem?.let(onDeleteClick) }
-            )
+                todoDao = todoDao,
+                sectionDao = sectionDao,
+                carentNum = carentNum,
+                onCarentNumChange = { newCarentNum -> carentNum = newCarentNum },
+                onAddClick = {
+                    scope.launch(Dispatchers.IO) {
+                        todoDao.insert(
+                            Todo(
+                                sectionNum = carentNum,
+                                title = "新しいTodo",
+                                text = "詳細",
+                                onChecked = false,
+                                tag = "タグ",
+                                quantity = 0,
+                                isDeleted = false
+                            )
+                        )
+                    }
+                },
+                onDeleteClick = { // ここで削除処理を追加
+                    scope.launch(Dispatchers.IO) {
+                        sectionDao.deleteLogicallySection(carentNum) // 論理削除
 
-            if (selectedItem != null) {
-                ModalBottomSheet(
-                    onDismissRequest = { selectedItem = null },
-                    sheetState = sheetState
-                ) {
-                    DetailComponent(selectedItem!!)
-                }
-            }
+                        // **削除後の遷移先を決定**
+                        val updatedSections =
+                            todoDao.getAllSectionsNow().filter { !it.todoOnDeleted }
+                        val currentIndex =
+                            updatedSections.indexOfFirst { it.todoSectionNum == carentNum }
+
+                        if (updatedSections.isNotEmpty()) {
+                            val newCarentNum = if (currentIndex > 0) {
+                                updatedSections[currentIndex - 1].todoSectionNum // 左のグループに移動
+                            } else {
+                                updatedSections.first().todoSectionNum // 先頭のグループに移動
+                            }
+                            withContext(Dispatchers.Main) {
+                                carentNum = newCarentNum // `carentNum` を更新
+                            }
+                        }
+                    }
+                },
+                onListAdd = { canShowDialog = true },
+                onSearchClick = { println("検索ボタンがクリックされました") }
+            )
         }
     }
-}
 
+    // **Compose_plus.kt の `AddSectionDialog` を呼び出す**
+    AddSectionDialog(
+        showDialog = canShowDialog,
+        onDismiss = { canShowDialog = false },
+        onConfirm = { inputText ->
+            scope.launch(Dispatchers.IO) {
+                sectionDao.insert(
+                    TodoSection(
+                        todoSectionTitle = inputText,
+                        todoOnDeleted = false
+                    )
+                )
+            }
+        }
+    )
+}
 
 // トップバーのComposable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,47 +187,52 @@ fun AppTopBar() {
 fun ScrollList(
     listState: LazyListState,
     todoList: List<Todo>,
-    onItemClicked: (Todo) -> Unit
+    onItemClicked: (Todo) -> Unit,
+    onSectionSelected: (Int) -> Unit,
+    sectionList: List<TodoSection>,
+    carentNum: Int,
+    headerRowListState: LazyListState
 ) {
+    val filteredTodoList by remember(todoList, carentNum) {
+        derivedStateOf { todoList.filter { it.sectionNum == carentNum } }
+    }
+
     LazyColumn(state = listState) {
-        // トップバー
         item {
             AppTopBar()
         }
 
-        // 固定ヘッダー
         stickyHeader {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-                    .background(Color(0xFF9DC183)), // ヘッダーの背景色
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Todoリスト",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White
-                )
-            }
+            HeadtitleList(
+                headtitles = sectionList,
+                carentNum = carentNum,
+                onItemSelected = { selectedNum ->
+                    onSectionSelected(selectedNum) // `carentNum` を更新
+                },
+                listState = headerRowListState
+            )
         }
 
-        // Todo リスト
-        items(todoList) { todo ->
+        items(filteredTodoList) { todo ->
             Text(
-                text = "${todo.title}: ${todo.quantity}",
+                text = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = Color.Blue)) { // タイトルを青色に変更
+                        append(todo.title)
+                    }
+                    append(": ${todo.text}") // テキスト部分はそのまま
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
                     .background(Color.White, RoundedCornerShape(8.dp))
                     .padding(16.dp)
-                    .clickable { onItemClicked(todo) }, // `Todo` を渡す
-                color = Color.Black
+                    .clickable { onItemClicked(todo) },
+                color = Color.Black // デフォルトの文字色
             )
         }
+
     }
 }
-
 
 // 詳細画面 (ボトムシート)
 @Composable
@@ -180,4 +248,3 @@ fun DetailComponent(todo: Todo) {
         Text(text = "タグ: ${todo.tag}", style = MaterialTheme.typography.bodySmall)
     }
 }
-
