@@ -24,7 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "todo_database"// データベース名
                 )
                     .fallbackToDestructiveMigration() // スキーマ変更時にデータを削除して再作成
-                    .allowMainThreadQueries() // メインスレッドでのクエリを許可
+//                    .allowMainThreadQueries() // メインスレッドでのクエリを許可
                     .build()
                 INSTANCE = instance
                 instance

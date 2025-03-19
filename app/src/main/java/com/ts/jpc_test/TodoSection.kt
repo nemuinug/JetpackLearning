@@ -8,5 +8,5 @@ import androidx.room.PrimaryKey
 data class TodoSection(
     @PrimaryKey(autoGenerate = true) val todoSectionNum: Int = 0,// 自動でIDを増やす
     @ColumnInfo(name = "todoSectionTitle") val todoSectionTitle: String,// 横リストアイテムタイトル
-    @ColumnInfo(name = "isTodoDeleted") val todoOnDeleted: Boolean
+    @ColumnInfo(name = "isTodoDeleted") val isTodoDeleted: Boolean
 )
