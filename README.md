@@ -1,6 +1,7 @@
 # JetpackLearning
 
-作成日：Mar 19, 2025
+更新日：Mar 19, 2025
+
 Jetpack Compose と Room を使って作った Android の TODO アプリです。
 機能の実装そのものと同じくらい、開発の進め方（ブランチ運用・Pull Request・コードレビュー）を実践することを目的にしています。
 
