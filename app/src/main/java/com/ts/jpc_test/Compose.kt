@@ -40,7 +40,7 @@ fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
     var selectedItem by remember { mutableStateOf<Todo?>(null) }
     val todoList by todoDao.getAll().collectAsState(initial = emptyList())
     val sectionListState = sectionDao.getAllSections().collectAsState(initial = emptyList())
-    val sectionList = sectionListState.value.filter { !it.todoOnDeleted } // フィルタリング
+    val sectionList = sectionListState.value.filter { !it.isTodoDeleted } // フィルタリング
     var carentNum by remember { mutableStateOf(0) } // 選択されたセクション番号
     var canShowDialog by remember { mutableStateOf(false) } // ダイアログ表示状態
     val scrollListState = rememberLazyListState()   // LazyColumn用
@@ -51,7 +51,7 @@ fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
         scope.launch(Dispatchers.IO) {
             val sectionId = initialAccess(sectionDao, todoDao) ?: return@launch
             withContext(Dispatchers.Main) {
-                carentNum = sectionId // 例のセクション番号を設定
+                carentNum = sectionId // メインスレッドで更新
             }
         }
     }
@@ -68,7 +68,9 @@ fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
             ScrollList(
                 listState = scrollListState,
                 todoList = todoList,
-                onItemClicked = { /* アイテムクリック処理 */ },
+                onItemClicked = { todo ->
+                    selectedItem = todo // クリックしたアイテムをセット
+                },
                 onSectionSelected = { selectedNum ->
                     carentNum = selectedNum // `carentNum` を更新
                 },
@@ -103,7 +105,7 @@ fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
 
                         // **削除後の遷移先を決定**
                         val updatedSections =
-                            sectionDao.getAllSectionsNow().filter { !it.todoOnDeleted }
+                            sectionDao.getAllSectionsNow().filter { !it.isTodoDeleted }
 
                         val currentIndex =
                             updatedSections.indexOfFirst { it.todoSectionNum == carentNum }
@@ -125,6 +127,12 @@ fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
             )
         }
     }
+    if (selectedItem != null) {
+        DetailComponent(
+            todo = selectedItem!!,
+            onDismiss = { selectedItem = null } // 閉じる処理
+        )
+    }
 
     // **Compose_plus.kt の `AddSectionDialog` を呼び出す**
     AddSectionDialog(
@@ -135,7 +143,7 @@ fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
                 sectionDao.insert(
                     TodoSection(
                         todoSectionTitle = inputText,
-                        todoOnDeleted = false
+                        isTodoDeleted = false
                     )
                 )
             }
@@ -147,7 +155,12 @@ fun MainComponent(sectionDao: TodoSectionDao, todoDao: TodoDao) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppTopBar() {
+    val scope = rememberCoroutineScope()
+    var showSettings by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) } //　 メニューの表示・非表示を管理
+
     Column {
+        //　 `TopAppBar` の見た目を統一
         TopAppBar(
             title = {
                 Row(
@@ -156,7 +169,7 @@ fun AppTopBar() {
                         .padding(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { /* メニュー処理 */ }) {
+                    IconButton(onClick = { showMenu = true }) { //　 メニューアイコンでポップアップを開く
                         Icon(imageVector = Icons.Filled.Menu, contentDescription = "メニュー")
                     }
                     Spacer(modifier = Modifier.weight(4f))
@@ -172,7 +185,7 @@ fun AppTopBar() {
                     IconButton(onClick = { /* 検索の処理 */ }) {
                         Icon(imageVector = Icons.Filled.Search, contentDescription = "検索")
                     }
-                    IconButton(onClick = { /* 設定の処理 */ }) {
+                    IconButton(onClick = { showSettings = true }) { //　 設定のポップアップを開く
                         Icon(imageVector = Icons.Filled.Settings, contentDescription = "設定")
                     }
                 }
@@ -180,6 +193,57 @@ fun AppTopBar() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Divider(color = Color(0xFF228B22), thickness = 1.dp)
+
+        //　 メインコンテンツのプレースホルダー
+        Box(modifier = Modifier.fillMaxSize()) {
+            // ここにスクロールリストなどを配置
+        }
+    }
+
+    //　 メニュー (ModalBottomSheet) の実装
+    if (showMenu) {
+        ModalBottomSheet(
+            onDismissRequest = { showMenu = false }
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("メニュー", style = MaterialTheme.typography.headlineSmall)
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+
+                //　 メニューのリスト
+                listOf("ホーム", "タスク一覧", "設定", "ログアウト").forEach { item ->
+                    Text(
+                        text = item,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showMenu = false //　 メニューを閉じる
+                                // ここに各メニューの処理を記述
+                            }
+                            .padding(vertical = 12.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+
+    // 設定 (ModalBottomSheet) の実装
+    if (showSettings) {
+        ModalBottomSheet(
+            onDismissRequest = { showSettings = false }
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("設定", style = MaterialTheme.typography.headlineSmall)
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("テーマ設定", style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = true, onCheckedChange = { /* 設定変更処理 */ })
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("通知設定", style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = false, onCheckedChange = { /* 設定変更処理 */ })
+            }
+        }
     }
 }
 
@@ -235,17 +299,100 @@ fun ScrollList(
     }
 }
 
-// 詳細画面 (ボトムシート)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailComponent(todo: Todo) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+fun DetailComponent(todo: Todo, onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true) // 修正
+
+    ModalBottomSheet(
+        onDismissRequest = { onDismiss() },
+        sheetState = sheetState
     ) {
-        Text(text = "タイトル: ${todo.title}", style = MaterialTheme.typography.titleLarge)
-        Text(text = "内容: ${todo.text}", style = MaterialTheme.typography.bodyMedium)
-        Text(text = "タグ: ${todo.tag}", style = MaterialTheme.typography.bodySmall)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "タイトル: ${todo.title}", style = MaterialTheme.typography.titleLarge)
+            Text(text = "内容: ${todo.text}", style = MaterialTheme.typography.bodyMedium)
+            Text(text = "タグ: ${todo.tag}", style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(onClick = {
+                onDismiss() // 閉じる処理
+            }) {
+                Text("閉じる")
+            }
+        }
+    }
+}
+
+
+
+// 半透明のオーバーレイ + 左側からスライドするメニュー
+@Composable
+fun OverlayMenu(onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f)) // 半透明の背景
+            .clickable(onClick = onDismiss), // クリックで閉じる
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .width(250.dp)
+                .fillMaxHeight()
+                .background(Color.White)
+                .padding(16.dp)
+        ) {
+            Column {
+                Text("メニュー", style = MaterialTheme.typography.headlineSmall)
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+                listOf("ホーム", "タスク一覧", "設定", "ログアウト").forEach { item ->
+                    Text(
+                        text = item,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { /* メニューの処理 */ }
+                            .padding(vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+// 半透明のオーバーレイ + 右側からスライドする設定画面
+@Composable
+fun OverlaySettings(onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f)) // 半透明の背景
+            .clickable(onClick = onDismiss), // クリックで閉じる
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Box(
+            modifier = Modifier
+                .width(300.dp)
+                .fillMaxHeight()
+                .background(Color.White)
+                .padding(16.dp)
+        ) {
+            Column {
+                Text("設定", style = MaterialTheme.typography.headlineSmall)
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("テーマ設定", style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = true, onCheckedChange = { /* 設定変更処理 */ })
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("通知設定", style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = false, onCheckedChange = { /* 設定変更処理 */ })
+            }
+        }
     }
 }

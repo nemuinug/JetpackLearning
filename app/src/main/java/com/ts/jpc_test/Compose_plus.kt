@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Divider
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -100,7 +103,7 @@ fun FloatingButtons(
     val scope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf(false) }
     val sectionListState = sectionDao.getAllSections().collectAsState(initial = emptyList())
-    val sectionList = sectionListState.value.filter { !it.todoOnDeleted }
+    val sectionList = sectionListState.value.filter { !it.isTodoDeleted }
 
     Box(
         modifier = Modifier
@@ -173,7 +176,7 @@ fun FloatingButtons(
                 sectionDao.deleteSection(carentNum) // 現在のグループを論理削除
 
                 // **削除後の遷移先を決定**
-                val updatedSections = sectionDao.getAllSectionsNow().filter { !it.todoOnDeleted }
+                val updatedSections = sectionDao.getAllSectionsNow().filter { !it.isTodoDeleted }
                 val currentIndex = updatedSections.indexOfFirst { it.todoSectionNum == carentNum }
 
                 if (updatedSections.isNotEmpty()) {
@@ -208,7 +211,7 @@ fun HeadtitleList(
         horizontalArrangement = Arrangement.spacedBy(16.dp)
 
     ) {
-        itemsIndexed(headtitles.filter { !it.todoOnDeleted }) { _, headtitle ->
+        itemsIndexed(headtitles.filter { !it.isTodoDeleted }) { _, headtitle ->
             Box(modifier = Modifier
                 .width(120.dp)
                 .height(50.dp)
@@ -276,7 +279,7 @@ suspend fun initialAccess(sectionDao: TodoSectionDao, todoDao: TodoDao): Int? {
     return withContext(Dispatchers.IO) {
         if (sectionDao.getSectionCount() == 0) {
             val exampleSection = TodoSection(
-                todoSectionTitle = "例", todoOnDeleted = false
+                todoSectionTitle = "例", isTodoDeleted = false
             )
             val exampleSectionId: Long = sectionDao.insert(exampleSection)
 
@@ -368,5 +371,32 @@ fun DeleteConfirmationDialog(
                 }
             }
         )
+    }
+}
+
+@Composable
+fun NavigationDrawerContent(onMenuItemClick: (String) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(250.dp)
+            .background(Color.White)
+            .padding(16.dp)
+    ) {
+        Text("メニュー", style = MaterialTheme.typography.headlineSmall)
+        Divider()
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // メニューのリスト
+        listOf("ホーム", "タスク一覧", "設定", "ログアウト").forEach { item ->
+            Text(
+                text = item,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onMenuItemClick(item) }
+                    .padding(vertical = 8.dp),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
     }
 }
